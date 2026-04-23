@@ -3,18 +3,21 @@ import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Login from './views/Login.vue'
 import Register from './views/Register.vue'
-import Dashboard from './views/Dashboard.vue'
 import ForgotPassword from './views/ForgotPassword.vue'
 import ResetPassword from './views/ResetPassword.vue'
+import Tickets from './views/Tickets.vue'
+import TicketDetail from './views/TicketDetail.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', component: Login },
-    { path: '/register', component: Register },
-    { path: '/dashboard', component: Dashboard, meta: { requiresAuth: true } },
+    { path: '/',                component: Login },
+    { path: '/register',        component: Register },
     { path: '/forgot-password', component: ForgotPassword },
-    { path: '/reset-password', component: ResetPassword }
+    { path: '/reset-password',  component: ResetPassword },
+    { path: '/tickets',         component: Tickets,      meta: { requiresAuth: true } },
+    { path: '/tickets/:id',     component: TicketDetail, meta: { requiresAuth: true } },
+    { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })
 

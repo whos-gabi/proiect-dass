@@ -8,6 +8,7 @@ const pool = require('./config/db');
 
 const authRoutes = require('./routes/auth');
 const passwordRoutes = require('./routes/password');
+const ticketsRoutes = require('./routes/tickets');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +46,7 @@ app.use(session({
 
 app.use('/api/auth', authRoutes);
 app.use('/api/password', passwordRoutes);
+app.use('/api/tickets', ticketsRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: 'v1-vulnerable' });

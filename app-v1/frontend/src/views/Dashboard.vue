@@ -23,6 +23,10 @@
           <p><strong>Role:</strong> {{ user.role }}</p>
           <p><strong>User ID:</strong> {{ user.id }}</p>
           <p><strong>Account Created:</strong> {{ formatDate(user.created_at) }}</p>
+
+          <div class="mt-4">
+            <button @click="router.push('/tickets')" class="btn btn-primary">View My Tickets</button>
+          </div>
         </div>
       </div>
     </div>
