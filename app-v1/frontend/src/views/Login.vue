@@ -86,9 +86,13 @@ async function handleLogin() {
     const data = await authAPI.login(email.value, password.value)
     if (data.error) {
       error.value = data.error
-    } else {
+    } else if (data.token) {
       success.value = 'Login successful! Redirecting...'
-      setTimeout(() => router.push('/tickets'), 900)
+      // Wait for localStorage to persist before redirect
+      await new Promise(resolve => setTimeout(resolve, 100))
+      router.push('/tickets')
+    } else {
+      error.value = 'Login failed: no token received'
     }
   } catch {
     error.value = 'Network error. Please try again.'

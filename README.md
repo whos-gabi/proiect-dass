@@ -12,6 +12,12 @@ docker-compose up -d
 
 Access: http://localhost:3000
 
+## Reset Databse
+
+```bash
+docker-compose down -v
+docker-compose up -d --build
+```
 ## Architecture
 
 - **Backend**: Node.js + Express (port 3000)
@@ -39,16 +45,33 @@ Access: http://localhost:3000
   - "User not found" vs "Invalid password"
 - Allows attacker enumeration
 
-### 4.5 Insecure Session Management
-- Cookie without httpOnly flag
-- Cookie without secure flag
-- Cookie without sameSite attribute
-- 24-hour expiration
+### 4.5 JWT Insecure - Multiple Vulnerabilities
+- Token stored in localStorage (accessible from JavaScript → XSS)
+- Token transmitted over HTTP without enforced HTTPS (vulnerable to MITM)
+- No CSRF protection (no origin/referer validation)
+- Long expiration (24 hours without refresh token)
+- No token invalidation on logout (token remains valid until expiration)
+- Weak hardcoded JWT secret (insecure_jwt_secret_v1)
 
 ### 4.6 Insecure Password Reset
 - Predictable token: MD5(email + timestamp)
 - No expiration
 - Reusable tokens
+
+### 4.7 IDOR (Insecure Direct Object Reference)
+- No ownership verification (ticket.owner_id === user.id)
+- Any authenticated user can access any ticket by ID
+- Missing authorization checks completely
+
+### 4.8 SQL Injection
+- String concatenation in SQL queries
+- Endpoint: GET /api/tickets/search/query?q=
+- User input directly embedded in query
+
+### 4.9 XSS (Cross-Site Scripting)
+- v-html without sanitization
+- Description field (TEXT) stored unsanitized in database
+- Malicious JavaScript executes in victim's browser
 
 ## API Endpoints
 

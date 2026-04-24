@@ -23,7 +23,9 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth) {
-    fetch('/api/auth/me', { credentials: 'include' })
+    const token = localStorage.getItem('token')
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+    fetch('/api/auth/me', { headers, credentials: 'include' })
       .then(res => res.ok ? next() : next('/'))
       .catch(() => next('/'))
   } else {

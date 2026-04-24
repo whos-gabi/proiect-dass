@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require('../config/db');
 const { hashPassword } = require('../utils/crypto');
 const { logAudit } = require('../utils/audit');
+const { generateToken } = require('../utils/jwt');
+const { requireAuth } = require('../middleware/auth');
 
 // VULNERABILITY 4.1: Weak Password Policy - Accept any password
 // VULNERABILITY 4.2: Insecure Password Storage - MD5 hash
@@ -45,7 +47,7 @@ router.post('/register', async (req, res) => {
 
 // VULNERABILITY 4.3: No Brute Force Protection - Unlimited attempts
 // VULNERABILITY 4.4: User Enumeration - Different error messages
-// VULNERABILITY 4.5: Insecure Session Management - No httpOnly, secure, sameSite
+// VULNERABILITY 4.5: Insecure JWT Configuration - Weak secret, long expiration, no algorithm enforcement
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -76,14 +78,13 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid password' });
     }
 
-    req.session.userId = user.id;
-    req.session.email = user.email;
-    req.session.role = user.role;
+    const token = generateToken(user);
 
     await logAudit(user.id, 'LOGIN_SUCCESS', 'auth', user.id, req.ip);
 
     res.json({
       message: 'Login successful',
+      token: token,
       user: { id: user.id, email: user.email, role: user.role }
     });
   } catch (error) {
@@ -92,31 +93,19 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.post('/logout', async (req, res) => {
-  const userId = req.session?.userId;
+router.post('/logout', requireAuth, async (req, res) => {
+  const userId = req.user.userId;
 
-  if (userId) {
-    await logAudit(userId, 'LOGOUT', 'auth', userId, req.ip);
-  }
+  await logAudit(userId, 'LOGOUT', 'auth', userId, req.ip);
 
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ error: 'Logout failed' });
-    }
-    res.clearCookie('connect.sid');
-    res.json({ message: 'Logout successful' });
-  });
+  res.json({ message: 'Logout successful' });
 });
 
-router.get('/me', async (req, res) => {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-
+router.get('/me', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT id, email, role, created_at FROM users WHERE id = $1',
-      [req.session.userId]
+      [req.user.userId]
     );
 
     if (result.rows.length === 0) {

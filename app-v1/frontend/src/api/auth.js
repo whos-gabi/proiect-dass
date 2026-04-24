@@ -14,22 +14,35 @@ export const authAPI = {
     const response = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ email, password })
     })
-    return response.json()
+    const data = await response.json()
+    if (data.token) {
+      localStorage.setItem('token', data.token)
+    }
+    return data
   },
 
   async logout() {
+    const token = localStorage.getItem('token')
     const response = await fetch(`${API_BASE}/auth/logout`, {
       method: 'POST',
-      credentials: 'include'
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
     })
+    localStorage.removeItem('token')
     return response.json()
   },
 
   async getMe() {
+    const token = localStorage.getItem('token')
+    const headers = new Headers()
+    if (token) {
+      headers.append('Authorization', `Bearer ${token}`)
+    }
     const response = await fetch(`${API_BASE}/auth/me`, {
+      method: 'GET',
+      headers,
+      mode: 'cors',
       credentials: 'include'
     })
     if (!response.ok) throw new Error('Not authenticated')

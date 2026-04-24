@@ -2,19 +2,12 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 const { logAudit } = require('../utils/audit');
-
-// Middleware to check authentication
-function requireAuth(req, res, next) {
-  if (!req.session || !req.session.userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  next();
-}
+const { requireAuth } = require('../middleware/auth');
 
 // Create ticket
 router.post('/', requireAuth, async (req, res) => {
   const { title, description, severity } = req.body;
-  const userId = req.session.userId;
+  const userId = req.user.userId;
 
   if (!title || !severity) {
     return res.status(400).json({ error: 'Title and severity required' });
@@ -44,7 +37,7 @@ router.post('/', requireAuth, async (req, res) => {
 // Any authenticated user can view any ticket
 router.get('/:id', requireAuth, async (req, res) => {
   const ticketId = req.params.id;
-  const userId = req.session.userId;
+  const userId = req.user.userId;
 
   try {
     const result = await pool.query(
@@ -68,7 +61,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 // Get all tickets for current user
 router.get('/', requireAuth, async (req, res) => {
-  const userId = req.session.userId;
+  const userId = req.user.userId;
 
   try {
     const result = await pool.query(
@@ -86,7 +79,7 @@ router.get('/', requireAuth, async (req, res) => {
 // VULNERABILITY: SQL INJECTION - Search uses string concatenation
 router.get('/search/query', requireAuth, async (req, res) => {
   const { q } = req.query;
-  const userId = req.session.userId;
+  const userId = req.user.userId;
 
   if (!q) {
     return res.status(400).json({ error: 'Search query required' });
@@ -107,8 +100,8 @@ router.get('/search/query', requireAuth, async (req, res) => {
 // Update ticket - checks role and ownership
 router.put('/:id', requireAuth, async (req, res) => {
   const ticketId = req.params.id;
-  const userId = req.session.userId;
-  const userRole = req.session.role;
+  const userId = req.user.userId;
+  const userRole = req.user.role;
   const { title, description, severity, status } = req.body;
 
   try {
@@ -177,8 +170,8 @@ router.put('/:id', requireAuth, async (req, res) => {
 // Delete ticket - only MANAGER can delete
 router.delete('/:id', requireAuth, async (req, res) => {
   const ticketId = req.params.id;
-  const userId = req.session.userId;
-  const userRole = req.session.role;
+  const userId = req.user.userId;
+  const userRole = req.user.role;
 
   if (userRole !== 'MANAGER') {
     return res.status(403).json({ error: 'Only managers can delete tickets' });
