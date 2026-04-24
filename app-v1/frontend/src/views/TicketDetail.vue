@@ -5,9 +5,6 @@
     <nav class="navbar">
       <span class="navbar-brand">AuthX</span>
       <div class="navbar-actions">
-        <button @click="$router.push('/tickets')" class="btn btn-ghost">← Back</button>
-        <button v-if="canEdit"   @click="showEditModal = true"  class="btn btn-secondary">Edit</button>
-        <button v-if="canDelete" @click="handleDelete"          class="btn btn-danger">Delete</button>
         <button @click="handleLogout" class="btn btn-ghost">Logout</button>
       </div>
     </nav>
@@ -29,9 +26,16 @@
             <h1 class="detail-title">{{ ticket.title }}</h1>
             <span :class="'severity severity-' + ticket.severity.toLowerCase()">{{ ticket.severity }}</span>
           </div>
-          <span :class="'status status-' + ticket.status.toLowerCase().replace('_', '-')">
-            {{ ticket.status.replace('_', ' ') }}
-          </span>
+          <div class="header-actions">
+            <span :class="'status status-' + ticket.status.toLowerCase().replace('_', '-')">
+              {{ ticket.status.replace('_', ' ') }}
+            </span>
+            <div class="action-buttons">
+              <button @click="$router.push('/tickets')" class="btn btn-ghost btn-sm">← Back</button>
+              <button v-if="canEdit" @click="openEditModal" class="btn btn-secondary btn-sm">Edit</button>
+              <button v-if="canDelete" @click="handleDelete" class="btn btn-danger btn-sm">Delete</button>
+            </div>
+          </div>
         </div>
 
         <!-- Meta -->
@@ -61,46 +65,50 @@
       </div>
     </div>
 
-    <!-- Edit modal -->
-    <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>Edit Ticket</h2>
-          <button class="close-btn" @click="showEditModal = false">&times;</button>
+    <!-- Bootstrap 5 Modal -->
+    <div class="modal fade" id="editTicketModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Edit Ticket</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form @submit.prevent="handleUpdate">
+            <div class="modal-body">
+              <div class="mb-3">
+                <label class="form-label">Title *</label>
+                <input v-model="editForm.title" type="text" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea v-model="editForm.description" class="form-control" rows="6"></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Severity *</label>
+                <select v-model="editForm.severity" class="form-select" required>
+                  <option value="LOW">Low</option>
+                  <option value="MED">Medium</option>
+                  <option value="HIGH">High</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Status *</label>
+                <select v-model="editForm.status" class="form-select" required>
+                  <option value="OPEN">Open</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="RESOLVED">Resolved</option>
+                </select>
+              </div>
+              <div v-if="editError" class="alert alert-danger py-2">{{ editError }}</div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary" :disabled="saving">
+                {{ saving ? 'Saving...' : 'Save Changes' }}
+              </button>
+            </div>
+          </form>
         </div>
-        <form @submit.prevent="handleUpdate">
-          <div class="form-group">
-            <label>Title *</label>
-            <input v-model="editForm.title" type="text" required />
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea v-model="editForm.description" rows="6"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Severity *</label>
-            <select v-model="editForm.severity" required>
-              <option value="LOW">Low</option>
-              <option value="MED">Medium</option>
-              <option value="HIGH">High</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Status *</label>
-            <select v-model="editForm.status" required>
-              <option value="OPEN">Open</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="RESOLVED">Resolved</option>
-            </select>
-          </div>
-          <div v-if="editError" class="alert-error">{{ editError }}</div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-ghost" @click="showEditModal = false">Cancel</button>
-            <button type="submit" class="btn btn-primary" :disabled="saving">
-              {{ saving ? 'Saving...' : 'Save Changes' }}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
 
@@ -121,17 +129,21 @@ const currentUser = ref(null)
 const loading     = ref(false)
 const error       = ref('')
 
-const showEditModal = ref(false)
 const saving        = ref(false)
 const editError     = ref('')
 const editForm = ref({ title: '', description: '', severity: '', status: '' })
+
+let modalInstance = null
 
 const canEdit = computed(() => {
   if (!ticket.value || !currentUser.value) return false
   return currentUser.value.role === 'MANAGER' || ticket.value.owner_id === currentUser.value.id
 })
 
-const canDelete = computed(() => currentUser.value?.role === 'MANAGER')
+const canDelete = computed(() => {
+  if (!ticket.value || !currentUser.value) return false
+  return currentUser.value.role === 'MANAGER' || ticket.value.owner_id === currentUser.value.id
+})
 
 async function loadTicket() {
   loading.value = true
@@ -151,12 +163,20 @@ async function loadTicket() {
   }
 }
 
+function openEditModal() {
+  if (!modalInstance) {
+    const el = document.getElementById('editTicketModal')
+    modalInstance = new window.bootstrap.Modal(el)
+  }
+  modalInstance.show()
+}
+
 async function handleUpdate() {
   editError.value = ''
   saving.value = true
   try {
     await updateTicket(route.params.id, editForm.value)
-    showEditModal.value = false
+    modalInstance.hide()
     await loadTicket()
   } catch (err) {
     editError.value = err.message
@@ -166,7 +186,7 @@ async function handleUpdate() {
 }
 
 async function handleDelete() {
-  if (!confirm('Delete this ticket?')) return
+  if (!confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) return
   try {
     await deleteTicket(route.params.id)
     router.push('/tickets')
@@ -297,7 +317,24 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
+}
+
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 13px;
 }
 
 .detail-title {
@@ -374,82 +411,6 @@ onMounted(async () => {
 .status-in-progress { background: #ffedd5; color: #c2410c; }
 .status-resolved    { background: #dcfce7; color: #166534; }
 
-/* ── Modal ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 20px;
-}
-
-.modal {
-  background: #fff;
-  border-radius: 10px;
-  width: 100%;
-  max-width: 560px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0,0,0,.18);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 22px 24px 16px;
-  border-bottom: 1px solid #e5e7eb;
-}
-.modal-header h2 { margin: 0; font-size: 18px; color: #111; }
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 26px;
-  color: #9ca3af;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0 4px;
-}
-.close-btn:hover { color: #374151; }
-
-.modal form { padding: 22px 24px; }
-
-.form-group { margin-bottom: 18px; }
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-}
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 14px;
-  font-family: inherit;
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color .15s;
-}
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus { border-color: #2563eb; }
-.form-group textarea { resize: vertical; min-height: 110px; }
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 8px;
-}
 
 @media (max-width: 640px) {
   .navbar { padding: 0 16px; }

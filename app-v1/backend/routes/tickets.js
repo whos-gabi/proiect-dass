@@ -167,25 +167,33 @@ router.put('/:id', requireAuth, async (req, res) => {
   }
 });
 
-// Delete ticket - only MANAGER can delete
+// Delete ticket - MANAGER can delete any, ANALYST can delete their own
 router.delete('/:id', requireAuth, async (req, res) => {
   const ticketId = req.params.id;
   const userId = req.user.userId;
   const userRole = req.user.role;
 
-  if (userRole !== 'MANAGER') {
-    return res.status(403).json({ error: 'Only managers can delete tickets' });
-  }
-
   try {
+    const ticketResult = await pool.query(
+      'SELECT * FROM tickets WHERE id = $1',
+      [ticketId]
+    );
+
+    if (ticketResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Ticket not found' });
+    }
+
+    const ticket = ticketResult.rows[0];
+
+    // Check authorization: MANAGER can delete any, ANALYST only their own
+    if (userRole !== 'MANAGER' && ticket.owner_id !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this ticket' });
+    }
+
     const result = await pool.query(
       'DELETE FROM tickets WHERE id = $1 RETURNING *',
       [ticketId]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Ticket not found' });
-    }
 
     await logAudit(userId, 'DELETE_TICKET', 'ticket', ticketId, req.ip);
 
