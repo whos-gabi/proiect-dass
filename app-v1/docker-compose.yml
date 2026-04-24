@@ -29,7 +29,7 @@ services:
       DB_USER: authx
       DB_PASSWORD: authx_dev_pass
       DB_NAME: authx_db
-      SESSION_SECRET: insecure_secret_key_v1
+      JWT_SECRET: insecure_secret_key_v1
       PORT: 3000
     ports:
       - "3001:3000"
