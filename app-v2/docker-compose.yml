@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: authx-db-v2
+    environment:
+      POSTGRES_USER: authx_v2
+      POSTGRES_PASSWORD: a412wW2PuzZ33CPKBCEsrtNGxxyZCYvV
+      POSTGRES_DB: authx_db_v2
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data_v2:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authx_v2 -d authx_db_v2"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: authx-backend-v2
+    environment:
+      NODE_ENV: development
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: authx_v2
+      DB_PASSWORD: a412wW2PuzZ33CPKBCEsrtNGxxyZCYvV
+      DB_NAME: authx_db_v2
+      JWT_SECRET: "*4?Jnu*B>=]71u2QAFe|^<Y.oC?>eMu]Eq!-as_2maU"
+      PORT: 3000
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run dev
+
+  frontend:
+    build: ./frontend
+    container_name: authx-frontend-v2
+    ports:
+      - "8080:8080"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data_v2:
