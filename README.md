@@ -5,97 +5,39 @@ Universitatea din București*
 
 ## Quick Start
 
+### Start app-v1
 ```bash
 cd app-v1
 docker-compose up -d
 ```
+### Start app-v2
+```bash
+cd app-v2
+docker-compose up -d
+```
+### Stop Docker
+```bash
+docker-compose down
+```
 
-Access: http://localhost:3000
+Access Frontend: http://localhost:8080
 
-## Reset Databse
+### Reset Databse
 
 ```bash
 docker-compose down -v
 docker-compose up -d --build
 ```
-## Architecture
+
+## Architectura
 
 - **Backend**: Node.js + Express (port 3000)
 - **Database**: PostgreSQL (port 5432)
 - **Frontend**: Vue.js 3 CDN + Bootstrap 5
 
-## Implemented Vulnerabilities
+## Docs
 
-### 4.1 Weak Password Policy
-- Accepts any password length (even "1")
-- No complexity requirements
-- No validation
-
-### 4.2 Insecure Password Storage
-- MD5 hash without salt
-- Easily crackable
-
-### 4.3 No Brute Force Protection
-- Unlimited login attempts
-- No rate limiting
-- No account lockout
-
-### 4.4 User Enumeration
-- Different error messages:
-  - "User not found" vs "Invalid password"
-- Allows attacker enumeration
-
-### 4.5 JWT Insecure - Multiple Vulnerabilities
-- Token stored in localStorage (accessible from JavaScript → XSS)
-- Token transmitted over HTTP without enforced HTTPS (vulnerable to MITM)
-- No CSRF protection (no origin/referer validation)
-- Long expiration (24 hours without refresh token)
-- No token invalidation on logout (token remains valid until expiration)
-- Weak hardcoded JWT secret (insecure_jwt_secret_v1)
-
-### 4.6 Insecure Password Reset
-- Predictable token: MD5(email + timestamp)
-- No expiration
-- Reusable tokens
-
-### 4.7 IDOR (Insecure Direct Object Reference)
-- No ownership verification (ticket.owner_id === user.id)
-- Any authenticated user can access any ticket by ID
-- Missing authorization checks completely
-
-### 4.8 SQL Injection
-- String concatenation in SQL queries
-- Endpoint: GET /api/tickets/search/query?q=
-- User input directly embedded in query
-
-### 4.9 XSS (Cross-Site Scripting)
-- v-html without sanitization
-- Description field (TEXT) stored unsanitized in database
-- Malicious JavaScript executes in victim's browser
-
-## API Endpoints
-
-- POST `/api/auth/register` - Register user
-- POST `/api/auth/login` - Login
-- POST `/api/auth/logout` - Logout
-- GET `/api/auth/me` - Get current user
-- POST `/api/password/forgot-password` - Request reset
-- POST `/api/password/reset-password` - Reset password
-
-## Database Tables
-
-- `users` - User accounts
-- `password_resets` - Reset tokens
-- `audit_logs` - Activity logs
-- `session` - Session storage (auto-created)
-
-## Testing Vulnerabilities
-
-### Test weak passwords:
-```bash
-curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@test.com","password":"1"}'
-```
-
-
+- [Proiect 2 - Break the Login – Atacarea și securizarea autentificării](docs/Proiect%202%20-%20Break%20the%20Login%20–%20Atacarea%20și%20securizarea%20autentificării.pdf)
+- [Barem de verificare](docs/Barem%20de%20verificare.pdf)
+- [Raport](https://docs.google.com/document/d/1HXJwSbPC3QxuU2d-GLpKPktD961gwb8Oswau-sSceWw/edit?usp=sharing)
+- [Video]()
